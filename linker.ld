@@ -1,34 +1,54 @@
-/* The entry point is _start from boot.s */
+/* Updated linker.ld */
+OUTPUT_FORMAT(elf64-x86-64)
+OUTPUT_ARCH(i386:x86-64)
 ENTRY(_start)
+
+PHDRS
+{
+    text    PT_LOAD    FLAGS((1 << 0) | (1 << 2)) ; /* Execute + Read */
+    rodata  PT_LOAD    FLAGS((1 << 2)) ;            /* Read only */
+    data    PT_LOAD    FLAGS((1 << 1) | (1 << 2)) ; /* Write + Read */
+}
 
 SECTIONS
 {
-    /* Begin putting sections at 1 Megabyte (0x100000) */
-    . = 1M;
+    . = 0xffffffff80200000;
 
-    /* First put the multiboot header, as it is required to be early in the image */
-    .text BLOCK(4K) : ALIGN(4K)
-    {
-        *(.multiboot)
-        *(.text)
-    }
+    /* Limine requests first */
+    .limine_requests : {
+        KEEP(*(.limine_requests))
+    } :data
 
-    /* Read-only data. */
-    .rodata BLOCK(4K) : ALIGN(4K)
-    {
-        *(.rodata)
-    }
+    /* Align to next page before code */
+    . = ALIGN(CONSTANT(COMMONPAGESIZE));
 
-    /* Read-write data (initialized) */
-    .data BLOCK(4K) : ALIGN(4K)
-    {
-        *(.data)
-    }
+    .text : {
+        *(.text .text.*)
+    } :text
 
-    /* Read-write data (uninitialized) and stack */
-    .bss BLOCK(4K) : ALIGN(4K)
-    {
+    /* Align to next page before read-only data */
+    . = ALIGN(CONSTANT(COMMONPAGESIZE));
+
+    .rodata : {
+        *(.rodata .rodata.*)
+    } :rodata
+
+    /* Align to next page before writable data */
+    . = ALIGN(CONSTANT(COMMONPAGESIZE));
+
+    .data : {
+        *(.data .data.*)
+    } :data
+
+    .bss : {
         *(COMMON)
-        *(.bss)
+        *(.bss .bss.*)
+    } :data
+
+    /DISCARD/ : {
+        *(.eh_frame)
+        *(.note .note.*)
+        *(.interp)
+        *(.comment)
     }
 }

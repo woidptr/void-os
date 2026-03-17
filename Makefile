@@ -1,38 +1,53 @@
-# $@ -> target
-# $^ -> prerequisites
+CC = x86_64-elf-gcc
+# Added -Ivendors/limine so it can find limine.h!
+CFLAGS = -std=gnu23 -ffreestanding -O2 -Wall -Wextra \
+         -m64 -march=x86-64 -mno-red-zone -mno-mmx -mno-sse -mno-sse2 \
+         -mcmodel=kernel -fno-pic -fno-pie -Ivendors/limine
+LDFLAGS = -T linker.ld -nostdlib -z max-page-size=0x1000
 
-
-# Definition of compiler and linker
-CC = i686-elf-gcc
-AS = i686-elf-as
-
-# Definitions of cmd flags
-CFLAGS = -std=gnu23 -ffreestanding -O2 -Wall -Wextra
-LDFLAGS = -T linker.ld -ffreestanding -O2 -nostdlib -lgcc
-
-# Definition of build dir
 BUILD_DIR = build
-TARGET = $(BUILD_DIR)/myos.bin
-OBJS = $(BUILD_DIR)/boot.o $(BUILD_DIR)/kernel.o
-SOURCE_DIR = src
+SRC_DIR = src
+ISO_DIR = iso_root
+TARGET_ELF = $(BUILD_DIR)/kernel.elf
+TARGET_ISO = myos.iso
+LIMINE_DIR = vendors/limine
 
-all: $(BUILD_DIR)/myos.bin
+SOURCES := $(shell find $(SRC_DIR) -name '*.c')
 
-$(BUILD_DIR):
-	mkdir -p $(BUILD_DIR)
+OBJECTS := $(SOURCES:%.c=$(BUILD_DIR)/%.o)
 
-$(TARGET): $(OBJS)
-	$(CC) $(LDFLAGS) -o $@ $^
+all: $(TARGET_ISO)
 
-$(BUILD_DIR)/%.o: $(SOURCE_DIR)/%.c | $(BUILD_DIR)
+$(BUILD_DIR)/%.o: %.c
+	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(BUILD_DIR)/%.o: %.s | $(BUILD_DIR)
-	$(AS) $< -o $@
+$(TARGET_ELF): $(OBJECTS)
+	$(CC) $(LDFLAGS) -o $@ $^
 
-run: $(TARGET)
-	qemu-system-i386 -kernel $(TARGET)
+# The rest remains exactly the same
+$(TARGET_ISO): $(TARGET_ELF) limine.conf
+	rm -rf $(ISO_DIR)
+	mkdir -p $(ISO_DIR)/boot/limine
+	mkdir -p $(ISO_DIR)/EFI/BOOT
+	cp $(TARGET_ELF) $(ISO_DIR)/boot/
+	cp limine.conf $(ISO_DIR)/boot/limine/
+	
+	cp $(LIMINE_DIR)/limine-bios.sys $(ISO_DIR)/boot/limine/
+	cp $(LIMINE_DIR)/limine-bios-cd.bin $(ISO_DIR)/boot/limine/
+	cp $(LIMINE_DIR)/BOOTX64.EFI $(ISO_DIR)/EFI/BOOT/
+	cp $(LIMINE_DIR)/BOOTIA32.EFI $(ISO_DIR)/EFI/BOOT/
+	
+	xorriso -as mkisofs -b boot/limine/limine-bios-cd.bin \
+		-no-emul-boot -boot-load-size 4 -boot-info-table \
+		--efi-boot EFI/BOOT/BOOTX64.EFI \
+		-efi-boot-part --efi-boot-image --protective-msdos-label \
+		$(ISO_DIR) -o $(TARGET_ISO)
 
-# Clean the build files
+run: $(TARGET_ISO)
+	qemu-system-x86_64 -cdrom $(TARGET_ISO) -m 256M
+
 clean:
-	rm -rf $(BUILD_DIR)
+	rm -rf $(BUILD_DIR) $(ISO_DIR) $(TARGET_ISO)
+
+.PHONY: all run clean

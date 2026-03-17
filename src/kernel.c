@@ -1,27 +1,46 @@
 #include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include "limine.h"
 
-typedef struct kernel_ctx {
-    uint16_t* terminal_buffer;
-} kernel_ctx_t;
+__attribute__((used, section(".limine_requests")))
+static volatile uint64_t requests_start_marker[] = LIMINE_REQUESTS_START_MARKER;
 
-void clean_stdout(kernel_ctx_t* kernel_ctx) {
-    
-}
+__attribute__((used, section(".limine_requests")))
+static volatile uint64_t requests_end_marker[] = LIMINE_REQUESTS_END_MARKER;
 
-void print(kernel_ctx_t* kernel_ctx, const char* str) {
-    int index = 0;
+__attribute__((used, section(".limine_requests")))
+static volatile uint64_t base_revision[] = { LIMINE_BASE_REVISION(3) };
 
-    while (str[index] != '\0') {
-        uint16_t colored_char = (uint16_t)str[index] | (uint16_t)0x0F00;
-        kernel_ctx->terminal_buffer[index] = colored_char;
-        index++;
+__attribute__((used, section(".limine_requests")))
+static volatile struct limine_framebuffer_request framebuffer_request = {
+    .id = LIMINE_FRAMEBUFFER_REQUEST_ID,
+    .revision = 0
+};
+
+static void hlt(void) {
+    for (;;) {
+        __asm__ ("hlt");
     }
 }
 
-void kmain() {
-    kernel_ctx_t kernel_ctx = {
-        .terminal_buffer = (uint16_t*)0xB8000,
-    };
+void _start(void) {
+    struct limine_framebuffer_response *fb_response = framebuffer_request.response;
 
-    print(&kernel_ctx, "Hello, World");
+    if (fb_response == NULL || fb_response->framebuffer_count < 1) {
+        hlt();
+    }
+
+    struct limine_framebuffer *fb = fb_response->framebuffers[0];
+    uint32_t *fb_ptr = (uint32_t *)fb->address;
+
+    if (fb_response != NULL) {
+        struct limine_framebuffer *fb = fb_response->framebuffers[0];
+        uint32_t *fb_ptr = (uint32_t *)fb->address;
+        for (size_t i = 0; i < (fb->pitch / 4) * fb->height; i++) {
+            fb_ptr[i] = 0xFFFFFFFF;
+        }
+    }
+
+    hlt();
 }
