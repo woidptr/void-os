@@ -9,7 +9,7 @@ BUILD_DIR = build
 SRC_DIR = src
 ISO_DIR = iso_root
 TARGET_ELF = $(BUILD_DIR)/kernel.elf
-TARGET_ISO = myos.iso
+TARGET_ISO = $(BUILD_DIR)/myos.iso
 LIMINE_DIR = vendors/limine
 
 SOURCES := $(shell find $(SRC_DIR) -name '*.c')
