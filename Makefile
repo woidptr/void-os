@@ -5,6 +5,12 @@ CFLAGS = -std=gnu23 -ffreestanding -O2 -Wall -Wextra \
          -mcmodel=kernel -fno-pic -fno-pie -Ivendors/limine
 LDFLAGS = -T linker.ld -nostdlib -z max-page-size=0x1000
 
+REQUIRED_BINS := $(CC) xorriso qemu-system-x86_64
+
+$(foreach bin,$(REQUIRED_BINS),\
+    $(if $(shell command -v $(bin) 2> /dev/null),,\
+		$(error "Missing dependency: [$(bin)] is not installed or not in PATH.")))
+
 BUILD_DIR = build
 SRC_DIR = src
 ISO_DIR = iso_root
