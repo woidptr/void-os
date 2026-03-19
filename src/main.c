@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include "limine.h"
+#include "cpu/idt.h"
 
 __attribute__((used, section(".limine_requests")))
 static volatile uint64_t requests_start_marker[] = LIMINE_REQUESTS_START_MARKER;
@@ -18,13 +19,13 @@ static volatile struct limine_framebuffer_request framebuffer_request = {
     .revision = 0
 };
 
-static void hlt(void) {
+static void hlt() {
     for (;;) {
         __asm__ ("hlt");
     }
 }
 
-void _start(void) {
+void kernel_main() {
     struct limine_framebuffer_response *fb_response = framebuffer_request.response;
 
     if (fb_response == NULL || fb_response->framebuffer_count < 1) {
@@ -41,6 +42,8 @@ void _start(void) {
             fb_ptr[i] = 0xFFFFFFFF;
         }
     }
+
+    idt_init();
 
     hlt();
 }

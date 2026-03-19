@@ -1,8 +1,11 @@
 CC = x86_64-elf-gcc
+AS = nasm
+
 # Added -Ivendors/limine so it can find limine.h!
 CFLAGS = -std=gnu23 -ffreestanding -O2 -Wall -Wextra \
          -m64 -march=x86-64 -mno-red-zone -mno-mmx -mno-sse -mno-sse2 \
-         -mcmodel=kernel -fno-pic -fno-pie -Ivendors/limine
+         -mcmodel=kernel -fno-pic -fno-pie -Ivendors/limine -Isrc
+ASFLAGS = -f elf64
 LDFLAGS = -T linker.ld -nostdlib -z max-page-size=0x1000
 
 REQUIRED_BINS := $(CC) xorriso qemu-system-x86_64
@@ -18,15 +21,25 @@ TARGET_ELF = $(BUILD_DIR)/kernel.elf
 TARGET_ISO = $(BUILD_DIR)/myos.iso
 LIMINE_DIR = vendors/limine
 
-SOURCES := $(shell find $(SRC_DIR) -name '*.c')
+C_SRCS := $(shell find $(SRC_DIR) -name '*.c')
+C_OBJS := $(C_SRCS:%.c=$(BUILD_DIR)/%.o)
 
-OBJECTS := $(SOURCES:%.c=$(BUILD_DIR)/%.o)
+AS_SRCS := $(shell find $(SRC_DIR) -name '*.asm')
+AS_OBJS := $(AS_SRCS:%.asm=$(BUILD_DIR)/%.o)
+
+OBJECTS := $(C_OBJS) $(AS_OBJS)
+
+.PHONY: all run clean
 
 all: $(TARGET_ISO)
 
 $(BUILD_DIR)/%.o: %.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: %.asm
+	@mkdir -p $(dir $@)
+	$(AS) $(ASFLAGS) $< -o $@
 
 $(TARGET_ELF): $(OBJECTS)
 	$(CC) $(LDFLAGS) -o $@ $^
@@ -55,5 +68,3 @@ run: $(TARGET_ISO)
 
 clean:
 	rm -rf $(BUILD_DIR) $(ISO_DIR) $(TARGET_ISO)
-
-.PHONY: all run clean
