@@ -4,12 +4,25 @@
 #include "limine.h"
 #include "cpu/idt.h"
 #include "utils/logger.h"
+#include "memory.h"
 
 __attribute__((used, section(".limine_requests")))
 static volatile uint64_t requests_start_marker[] = LIMINE_REQUESTS_START_MARKER;
 
 __attribute__((used, section(".limine_requests")))
 static volatile uint64_t base_revision[] = { LIMINE_BASE_REVISION(3) };
+
+__attribute__((used, section(".limine_requests")))
+volatile struct limine_memmap_request memmap_request = {
+    .id = LIMINE_MEMMAP_REQUEST_ID,
+    .revision = 0,
+};
+
+__attribute__((used, section(".limine_requests")))
+volatile struct limine_hhdm_request hhdm_request = {
+    .id = LIMINE_HHDM_REQUEST_ID,
+    .revision = 0,
+};
 
 __attribute__((used, section(".limine_requests")))
 static volatile struct limine_framebuffer_request framebuffer_request = {
@@ -33,7 +46,10 @@ void kernel_main() {
         hlt();
     }
 
-    qemu_print("Testing");
+    memory_init();
+
+    string_t str = strnew("Testing the new string implementation");
+    qemu_print(&str);
 
     struct limine_framebuffer *fb = fb_response->framebuffers[0];
     uint32_t *fb_ptr = (uint32_t *)fb->address;
