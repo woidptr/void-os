@@ -1,20 +1,29 @@
+PROFILE ?= debug
+
 CC = x86_64-elf-gcc
 AS = nasm
 
 # Added -Ivendors/limine so it can find limine.h!
-CFLAGS = -std=gnu23 -ffreestanding -O2 -Wall -Wextra \
+CFLAGS = -std=gnu23 -ffreestanding -Wall -Wextra \
          -m64 -march=x86-64 -mno-red-zone -mno-mmx -mno-sse -mno-sse2 \
          -mcmodel=kernel -fno-pic -fno-pie -Ivendors/limine -Isrc
 ASFLAGS = -f elf64
 LDFLAGS = -T linker.ld -nostdlib -z max-page-size=0x1000
 
-REQUIRED_BINS := $(CC) xorriso qemu-system-x86_64
+ifeq ($(PROFILE),debug)
+	CFLAGS += -O0 -g
+else ifeq ($(PROFILE),release)
+	CFLAGS += -O2 -DNDEBUG
+else
+	$(error "Invalid PROFILE!")
+endif
 
+REQUIRED_BINS := $(CC) xorriso qemu-system-x86_64
 $(foreach bin,$(REQUIRED_BINS),\
     $(if $(shell command -v $(bin) 2> /dev/null),,\
 		$(error "Missing dependency: [$(bin)] is not installed or not in PATH.")))
 
-BUILD_DIR = build
+BUILD_DIR = build/$(PROFILE)
 SRC_DIR = src
 ISO_DIR = iso_root
 TARGET_ELF = $(BUILD_DIR)/kernel.elf
@@ -64,7 +73,7 @@ $(TARGET_ISO): $(TARGET_ELF) limine.conf
 		$(ISO_DIR) -o $(TARGET_ISO)
 
 run: $(TARGET_ISO)
-	qemu-system-x86_64 -cdrom $(TARGET_ISO) -m 256M
+	qemu-system-x86_64 -cdrom $(TARGET_ISO) -m 256M -debugcon stdio
 
 clean:
 	rm -rf $(BUILD_DIR) $(ISO_DIR) $(TARGET_ISO)

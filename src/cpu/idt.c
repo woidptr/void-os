@@ -1,11 +1,7 @@
 #include "idt.h"
 #include "io.h"
 #include <stdint.h>
-
-#define PIC1_COMMAND 0x20
-#define PIC1_DATA    0x21
-#define PIC2_COMMAND 0xA0
-#define PIC2_DATA    0xA1
+#include "ports.h"
 
 extern void isr_stub(void);
 extern void isr33(void);
@@ -29,32 +25,32 @@ void idt_handler(uint64_t interrupt_num) {
 
     if (interrupt_num >= 32 && interrupt_num <= 47) {
         if (interrupt_num >= 40) {
-            outb(PIC2_COMMAND, 0x20);
+            outb(hardware_ports.pic2_cmd, 0x20);
         }
-        outb(PIC1_COMMAND, 0x20);
+        outb(hardware_ports.pic1_cmd, 0x20);
     }
 }
 
 void pic_remap(void) {
     uint8_t a1, a2;
 
-    a1 = inb(PIC1_DATA);
-    a2 = inb(PIC2_DATA);
+    a1 = inb(hardware_ports.pic1_data);
+    a2 = inb(hardware_ports.pic2_data);
 
-    outb(PIC1_COMMAND, 0x11);
-    outb(PIC2_COMMAND, 0x11);
+    outb(hardware_ports.pic1_cmd, 0x11);
+    outb(hardware_ports.pic2_cmd, 0x11);
 
-    outb(PIC1_DATA, 0x20);
-    outb(PIC2_DATA, 0x28);
+    outb(hardware_ports.pic1_data, 0x20);
+    outb(hardware_ports.pic2_data, 0x28);
 
-    outb(PIC1_DATA, 4);
-    outb(PIC2_DATA, 2);
+    outb(hardware_ports.pic1_data, 4);
+    outb(hardware_ports.pic2_data, 2);
 
-    outb(PIC1_DATA, 0x01);
-    outb(PIC2_DATA, 0x01);
+    outb(hardware_ports.pic1_data, 0x01);
+    outb(hardware_ports.pic2_data, 0x01);
 
-    outb(PIC1_DATA, a1);
-    outb(PIC2_DATA, a2);
+    outb(hardware_ports.pic1_data, a1);
+    outb(hardware_ports.pic2_data, a2);
 }
 
 void idt_set_gate(uint8_t num, uint64_t base, uint16_t sel, uint8_t flags) {
@@ -81,8 +77,8 @@ void idt_init(void) {
 
     pic_remap();
 
-    outb(PIC1_DATA, 0xFD);
-    outb(PIC2_DATA, 0xFF);
+    outb(hardware_ports.pic1_data, 0xFD);
+    outb(hardware_ports.pic2_data, 0xFF);
 
     __asm__ volatile ("sti");
 }
