@@ -37,6 +37,18 @@ string_t strnew(const char* text) {
     return str;
 }
 
+void strfree(string_t* str) {
+    if (str == nullptr || str->data == nullptr) {
+        return;
+    }
+
+    memfree(str->data);
+
+    str->data = nullptr;
+    str->length = 0;
+    str->capacity = 0;
+}
+
 void strappend(string_t* str, const char* text) {
     size_t i = 0;
     while (text[i] != '\0' && str->length < str->capacity - 1) {

@@ -13,5 +13,6 @@ typedef union __attribute__((transparent_union)) {
 } string_arg_t;
 
 string_t strnew(const char* text);
+void strfree(string_t* str);
 void strappend(string_t* str, const char* text);
 void strclear(string_t* str);

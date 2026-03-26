@@ -69,6 +69,7 @@ void kernel_main() {
 
     string_t str = strnew("Testing the new string implementation");
     qemu_print(&str);
+    strfree(&str);
 
     struct limine_framebuffer *fb = fb_response->framebuffers[0];
     uint32_t *fb_ptr = (uint32_t *)fb->address;
