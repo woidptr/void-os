@@ -40,29 +40,32 @@ static void hlt() {
     }
 }
 
-// typedef struct framebuffer_context {
-//     void* addr;
-//     uint32_t width;
-//     uint32_t height;
-// } framebuffer_context_t;
-
 runtime_context_t init_limine() {
-    struct limine_hhdm_response* hhdm = hhdm_request.response;
+    runtime_context_t runtime_ctx = {0};
+    static framebuffer_context_t framebuffer_ctx = {0};
 
-    runtime_context_t runtime_ctx = {
-        .hhdm_offset = hhdm->offset,
-    };
+    struct limine_hhdm_response* hhdm = hhdm_request.response;
+    struct limine_framebuffer_response *fb_response = framebuffer_request.response;
+
+    if (hhdm != nullptr) {
+        runtime_ctx.hhdm_offset = hhdm->offset;
+    }
+    
+    if (fb_response != NULL && fb_response->framebuffer_count > 0) {
+        struct limine_framebuffer* fb = fb_response->framebuffers[0];
+
+        framebuffer_ctx.addr = fb->address;
+        framebuffer_ctx.width = fb->width;
+        framebuffer_ctx.height = fb->height;
+        framebuffer_ctx.pitch = fb->pitch;
+
+        runtime_ctx.framebuffer = &framebuffer_ctx;
+    }
 
     return runtime_ctx;
 }
 
 void kernel_main() {
-    struct limine_framebuffer_response *fb_response = framebuffer_request.response;
-    
-    if (fb_response == NULL || fb_response->framebuffer_count < 1) {
-        hlt();
-    }
-    
     runtime_context_t runtime_ctx = init_limine();
 
     memory_init(&runtime_ctx);
@@ -71,15 +74,8 @@ void kernel_main() {
     qemu_print(&str);
     strfree(&str);
 
-    struct limine_framebuffer *fb = fb_response->framebuffers[0];
-    uint32_t *fb_ptr = (uint32_t *)fb->address;
-
-    if (fb_response != NULL) {
-        struct limine_framebuffer *fb = fb_response->framebuffers[0];
-        uint32_t *fb_ptr = (uint32_t *)fb->address;
-        for (size_t i = 0; i < (fb->pitch / 4) * fb->height; i++) {
-            fb_ptr[i] = 0xFFFFFFFF;
-        }
+    for (size_t i = 0; i < (runtime_ctx.framebuffer->pitch / 4) * runtime_ctx.framebuffer->height; i++) {
+        runtime_ctx.framebuffer->addr[i] = 0xFFFFFFFF;
     }
 
     idt_init();
