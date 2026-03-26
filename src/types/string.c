@@ -1,5 +1,5 @@
 #include "string.h"
-#include "../memory.h"
+#include "core/memory.h"
 
 size_t textlen(const char* text) {
     size_t length = 0;

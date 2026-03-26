@@ -4,7 +4,7 @@
 #include "limine.h"
 #include "cpu/idt.h"
 #include "utils/logger.h"
-#include "memory.h"
+#include "core/memory.h"
 #include "runtime.h"
 
 __attribute__((used, section(".limine_requests")))
