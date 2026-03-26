@@ -5,6 +5,7 @@
 #include "cpu/idt.h"
 #include "utils/logger.h"
 #include "memory.h"
+#include "runtime.h"
 
 __attribute__((used, section(".limine_requests")))
 static volatile uint64_t requests_start_marker[] = LIMINE_REQUESTS_START_MARKER;
@@ -39,14 +40,32 @@ static void hlt() {
     }
 }
 
+// typedef struct framebuffer_context {
+//     void* addr;
+//     uint32_t width;
+//     uint32_t height;
+// } framebuffer_context_t;
+
+runtime_context_t init_limine() {
+    struct limine_hhdm_response* hhdm = hhdm_request.response;
+
+    runtime_context_t runtime_ctx = {
+        .hhdm_offset = hhdm->offset,
+    };
+
+    return runtime_ctx;
+}
+
 void kernel_main() {
     struct limine_framebuffer_response *fb_response = framebuffer_request.response;
-
+    
     if (fb_response == NULL || fb_response->framebuffer_count < 1) {
         hlt();
     }
+    
+    runtime_context_t runtime_ctx = init_limine();
 
-    memory_init();
+    memory_init(&runtime_ctx);
 
     string_t str = strnew("Testing the new string implementation");
     qemu_print(&str);

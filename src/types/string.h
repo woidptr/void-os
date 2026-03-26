@@ -7,7 +7,11 @@ typedef struct string {
     size_t capacity;
 } string_t;
 
+typedef union __attribute__((transparent_union)) {
+    char* raw;
+    string_t* obj;
+} string_arg_t;
+
 string_t strnew(const char* text);
-size_t strlen(const char* text);
-void str_append(string_t* str, const char* text);
-void str_clear(string_t* str);
+void strappend(string_t* str, const char* text);
+void strclear(string_t* str);

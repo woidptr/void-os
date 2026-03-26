@@ -23,4 +23,10 @@ constexpr serial_ports_t serial_ports = {
     .qemu_debug_port = 0xE9,
 };
 
+#define $qemu_print(literal) quemu_print(&(string_t)){ \
+    .data = (char*)literal, \
+    .length = strlen(literal) \
+    .capacity = strlen(literal) \
+})
+
 void qemu_print(string_t* str);

@@ -1,10 +1,20 @@
 #include "string.h"
 #include "../memory.h"
 
+size_t textlen(const char* text) {
+    size_t length = 0;
+
+    while (text[length] != '\0') {
+        length++;
+    }
+
+    return length;
+}
+
 string_t strnew(const char* text) {
     string_t str;
 
-    str.length = strlen(text);
+    str.length = textlen(text);
 
     if (str.length < 15) {
         str.capacity = 16;
@@ -27,17 +37,7 @@ string_t strnew(const char* text) {
     return str;
 }
 
-size_t strlen(const char* text) {
-    size_t length = 0;
-
-    while (text[length] != '\0') {
-        length++;
-    }
-
-    return length;
-}
-
-void str_append(string_t* str, const char* text) {
+void strappend(string_t* str, const char* text) {
     size_t i = 0;
     while (text[i] != '\0' && str->length < str->capacity - 1) {
         str->data[str->length] = text[i];
