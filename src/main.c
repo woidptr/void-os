@@ -87,7 +87,7 @@ void kernel_main() {
         }
     }
 
-    // draw_string(&runtime_ctx, "AAAA");
+    draw_string(&runtime_ctx, "AAAA");
 
     idt_init();
 
