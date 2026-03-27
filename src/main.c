@@ -5,7 +5,9 @@
 #include "cpu/idt.h"
 #include "utils/logger.h"
 #include "core/memory.h"
+#include "core/graphics.h"
 #include "runtime.h"
+#include "core/math/vec2.h"
 
 __attribute__((used, section(".limine_requests")))
 static volatile uint64_t requests_start_marker[] = LIMINE_REQUESTS_START_MARKER;
@@ -74,9 +76,18 @@ void kernel_main() {
     qemu_print(&str);
     strfree(&str);
 
-    for (size_t i = 0; i < (runtime_ctx.framebuffer->pitch / 4) * runtime_ctx.framebuffer->height; i++) {
-        runtime_ctx.framebuffer->addr[i] = 0xFFFFFFFF;
+    // for (size_t i = 0; i < (runtime_ctx.framebuffer->pitch / 4) * runtime_ctx.framebuffer->height; i++) {
+    //     runtime_ctx.framebuffer->addr[i] = 0xFFFFFFFF;
+    // }
+
+    for (uint32_t y = 100; y < 200; y++) {
+        for (uint32_t x = 100; x < 200; x++) {
+            vec2_uint32_t pos = $vec2_new(x, y);
+            put_pixel(&runtime_ctx, pos, 0x00FF0000); 
+        }
     }
+
+    // draw_string(&runtime_ctx, "AAAA");
 
     idt_init();
 
