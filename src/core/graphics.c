@@ -1,5 +1,13 @@
 #include "graphics.h"
 
+// static constexpr uint8_t terminus_font[] = {
+//     #embed "ter-v16n.psf"
+// };
+
+void graphics_init(runtime_context_t* runtime_ctx) {
+
+}
+
 void put_pixel(runtime_context_t* runtime_ctx, vec2_uint32_t pos, uint32_t color) {
     if (pos.x >= runtime_ctx->framebuffer->width || pos.y >= runtime_ctx->framebuffer->height) {
         return;
@@ -30,7 +38,7 @@ void draw_char(runtime_context_t* runtime_ctx, char c, uint32_t fg_color, uint32
     for (uint32_t row = 0; row < 16; row++) {
         for (uint32_t col = 0; col < 8; col++) {
             
-            vec2_uint32_t pos = $vec2_new(cursor_x + col, cursor_y + row);
+            vec2_uint32_t pos = vec2(cursor_x + col, cursor_y + row);
             if (glyph[row] & (1 << (7 - col))) {
                 put_pixel(runtime_ctx, pos, fg_color);
             } else {

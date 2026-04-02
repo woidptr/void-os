@@ -70,7 +70,7 @@ runtime_context_t init_limine() {
 void kernel_main() {
     runtime_context_t runtime_ctx = init_limine();
 
-    memory_init(&runtime_ctx);
+    meminit(&runtime_ctx);
 
     string_t str = strnew("Testing the new string implementation");
     qemu_print(&str);
@@ -82,8 +82,8 @@ void kernel_main() {
 
     for (uint32_t y = 100; y < 200; y++) {
         for (uint32_t x = 100; x < 200; x++) {
-            vec2_uint32_t pos = $vec2_new(x, y);
-            put_pixel(&runtime_ctx, pos, 0x00FF0000); 
+            vec2_uint32_t pos = vec2(x, y);
+            put_pixel(&runtime_ctx, pos, 0x00FF0000);
         }
     }
 
