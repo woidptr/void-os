@@ -1,5 +1,6 @@
 #include "string.h"
 #include "core/memory.h"
+#include "core/math/hash.h"
 
 size_t textlen(const char* text) {
     size_t length = 0;
@@ -59,11 +60,22 @@ void strappend(string_t* str, const char* text) {
     str->data[str->length] = '\0';
 }
 
+uint64_t strhash(string_t* str) {
+    uint64_t hash = fnv1a_hash_params.fnv_offset;
+
+    for (size_t i = 0; i < str->length; i++) {
+        hash ^= (uint8_t)(str->data[i]);
+        hash *= fnv1a_hash_params.fnv_prime;
+    }
+
+    return hash;
+}
+
 uint64_t cstrhash(const char* cstr) {
-    uint64_t hash = 0xCBF29CE484222325;
+    uint64_t hash = fnv1a_hash_params.fnv_offset;
     while (*cstr) {
         hash ^= (uint8_t)(*cstr++);
-        hash *= 0x100000001B3;
+        hash *= fnv1a_hash_params.fnv_prime;
     }
 
     return hash;

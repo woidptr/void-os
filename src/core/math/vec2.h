@@ -1,7 +1,7 @@
 #pragma once
 #include <stdint.h>
 
-#define DEFINE_VEC2(type, suffix) \
+#define $define_vec2(type, suffix) \
     typedef struct { \
         type x; \
         type y; \
@@ -15,11 +15,11 @@
         return (a.x == b.x) && (a.y == b.y); \
     }
 
-DEFINE_VEC2(uint32_t, uint32);
-DEFINE_VEC2(float, fl);
-DEFINE_VEC2(int, integer);
+$define_vec2(uint32_t, uint32);
+$define_vec2(float, fl);
+$define_vec2(int, integer);
 
-#undef DEFINE_VEC2
+#undef $define_vec2
 
 #define vec2(X, Y) _Generic((X), \
     uint32_t: (vec2_uint32_t){ .x = (X), .y = (Y) }, \

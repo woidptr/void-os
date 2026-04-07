@@ -1,18 +1,18 @@
 #pragma once
 #include <stdint.h>
 
-#define DEFINE_VEC3(type, suffix) \
+#define $define_vec3(type, suffix) \
     typedef struct { \
         type x; \
         type y; \
         type z; \
     } vec2_##suffix##_t;
 
-DEFINE_VEC3(uint32_t, uint32);
-DEFINE_VEC3(float, fl);
-DEFINE_VEC3(int, integer);
+$define_vec3(uint32_t, uint32);
+$define_vec3(float, fl);
+$define_vec3(int, integer);
 
-#undef DEFINE_VEC3
+#undef $define_vec3
 
 #define vec3(X, Y, Z) _Generic((X), \
     uint32_t: (vec2_uint32_t){ .x = (X), .y = (Y), z = (Z) }, \

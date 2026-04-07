@@ -1,9 +1,19 @@
 PROFILE ?= debug
+TARGET_ARCH = x86
 
-CC = x86_64-elf-gcc
+CC := $(shell brew --prefix llvm)/bin/clang
+
+ifeq ($(TARGET_ARCH), x86)
+	TARGET_FLAG := --target=x86_64-elf
+	QEMU := qemu-system-x86_64
+else ifeq ($(TARGET_ARCH), arm)
+	TARGET_FLAG := --target=aarch64-elf
+	QEMU := qemu-system-aarch64
+endif
+
 AS = nasm
 
-CFLAGS = -std=gnu23 -ffreestanding -Wall -Wextra \
+CFLAGS = $(TARGET_FLAG) -std=gnu23 -ffreestanding -Wall -Wextra \
          -m64 -march=x86-64 -mno-red-zone -mno-mmx -mno-sse -mno-sse2 \
          -mcmodel=kernel -fno-pic -fno-pie -Ivendors/limine -Isrc \
 		 --embed-dir=assets
@@ -23,14 +33,18 @@ $(foreach bin,$(REQUIRED_BINS),\
     $(if $(shell command -v $(bin) 2> /dev/null),,\
         $(error "Missing dependency: [$(bin)] is not installed or not in PATH.")))
 
-BUILD_DIR = build/$(PROFILE)
+BUILD_DIR = build/$(TARGET_ARCH)/$(PROFILE)
 SRC_DIR = src
-ISO_DIR = iso_root
+ISO_DIR = $(BUILD_DIR)/iso_root
 TARGET_ELF = $(BUILD_DIR)/kernel.elf
 TARGET_ISO = $(BUILD_DIR)/myos.iso
 LIMINE_DIR = vendors/limine
 
-C_SRCS := $(shell find $(SRC_DIR) -name '*.c')
+ALL_SRCS := $(shell find $(SRC_DIR) -name '*.c')
+CORE_SRCS := $(filter-out $(SRC_DIR)/arch/%, $(ALL_SRCS))
+ARCH_SRCS := $(shell find $(SRC_DIR)/arch/$(TARGET_ARCH) -name '*.c')
+# C_SRCS := $(shell find $(SRC_DIR) -name '*.c')
+C_SRCS := $(CORE_SRCS) $(ARCH_SRCS)
 C_OBJS := $(C_SRCS:%.c=$(BUILD_DIR)/%.o)
 
 AS_SRCS := $(shell find $(SRC_DIR) -name '*.asm')
@@ -51,7 +65,7 @@ $(BUILD_DIR)/%.o: %.asm
 	$(AS) $(ASFLAGS) $< -o $@
 
 $(TARGET_ELF): $(OBJECTS)
-	$(CC) $(LDFLAGS) -o $@ $^
+	$(CC) $(TARGET_FLAG) $(LDFLAGS) -o $@ $^
 
 $(TARGET_ISO): $(TARGET_ELF) limine.conf
 	@uv run --project builder -m builder --rootdir $(CURDIR)
@@ -77,7 +91,7 @@ build: $(TARGET_ISO)
 	@echo "Build files have successfully been written to $(TARGET_ISO)"
 
 run: $(TARGET_ISO)
-	qemu-system-x86_64 -cdrom $(TARGET_ISO) -m 256M -debugcon stdio
+	$(QEMU) -cdrom $(TARGET_ISO) -m 256M -debugcon stdio
 
 clean:
 	rm -rf $(BUILD_DIR) $(ISO_DIR) $(TARGET_ISO)
