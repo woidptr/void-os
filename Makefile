@@ -3,7 +3,6 @@ PROFILE ?= debug
 CC = x86_64-elf-gcc
 AS = nasm
 
-# Added -Ivendors/limine so it can find limine.h!
 CFLAGS = -std=gnu23 -ffreestanding -Wall -Wextra \
          -m64 -march=x86-64 -mno-red-zone -mno-mmx -mno-sse -mno-sse2 \
          -mcmodel=kernel -fno-pic -fno-pie -Ivendors/limine -Isrc \
@@ -54,7 +53,6 @@ $(BUILD_DIR)/%.o: %.asm
 $(TARGET_ELF): $(OBJECTS)
 	$(CC) $(LDFLAGS) -o $@ $^
 
-# The rest remains exactly the same
 $(TARGET_ISO): $(TARGET_ELF) limine.conf
 	@uv run --project builder -m builder --rootdir $(CURDIR)
 

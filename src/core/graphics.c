@@ -1,5 +1,4 @@
 #include "graphics.h"
-#include "core/tiny_font.h"
 #include "core/font.h"
 #include "utils/logger.h"
 #include "core/resources.h"
@@ -42,14 +41,6 @@ void put_pixel(runtime_context_t* runtime_ctx, vec2_uint32_t pos, uint32_t color
     runtime_ctx->framebuffer->addr[offset] = color;
 }
 
-// static constexpr uint8_t tiny_font[2][16] = {
-//     { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
-//       0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF },
-
-//     { 0x00, 0x00, 0x18, 0x3C, 0x66, 0x66, 0x7E, 0x66, 
-//       0x66, 0x66, 0x66, 0x00, 0x00, 0x00, 0x00, 0x00 }
-// };
-
 static uint32_t cursor_x = 0;
 static uint32_t cursor_y = 0;
 
@@ -75,11 +66,8 @@ void draw_char(runtime_context_t* runtime_ctx, char c, uint32_t fg_color, uint32
 
             uint32_t current_color = (glyph[byte_offset] & (1 << bit_index)) ? fg_color : bg_color;
 
-            // NEW: The Integer Scaling Loop!
-            // Instead of drawing 1 pixel, draw a block of (scale x scale) pixels
             for (uint32_t sy = 0; sy < scale; sy++) {
                 for (uint32_t sx = 0; sx < scale; sx++) {
-                    // Multiply the base position by the scale, then add our sub-pixel offset
                     vec2_uint32_t pos = vec2(
                         cursor_x + (col * scale) + sx, 
                         cursor_y + (row * scale) + sy
@@ -90,7 +78,6 @@ void draw_char(runtime_context_t* runtime_ctx, char c, uint32_t fg_color, uint32
         }
     }
 
-    // 4. Move the cursor forward by the dynamic width of the font
     cursor_x += active_font->width * scale;
 }
 
