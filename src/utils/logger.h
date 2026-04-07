@@ -30,3 +30,4 @@ constexpr serial_ports_t serial_ports = {
 })
 
 void qemu_print(string_t* str);
+// void kprintf(const char* fmt, ...);

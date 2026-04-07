@@ -1,11 +1,33 @@
 #include "graphics.h"
+#include "core/tiny_font.h"
+#include "core/font.h"
+#include "utils/logger.h"
+#include "core/resources.h"
 
-// static constexpr uint8_t terminus_font[] = {
-//     #embed "ter-v16n.psf"
-// };
+psf2_header_t* active_font = nullptr;
 
 void graphics_init(runtime_context_t* runtime_ctx) {
+    uintptr_t font_hash = 860852674ULL;
 
+    resource_t font_res = resource_get(font_hash);
+
+    if (font_res.data == nullptr) {
+        string_t str = strnew("Failed to initialize font!");
+        qemu_print(&str);
+        strfree(&str);
+
+        return;
+    }
+
+    active_font = (psf2_header_t*)font_res.data;
+
+    if (!active_font || active_font->magic != psf2_magic) {
+        string_t str = strnew("Failed to initialize font!");
+        qemu_print(&str);
+        strfree(&str);
+
+        return;
+    }
 }
 
 void put_pixel(runtime_context_t* runtime_ctx, vec2_uint32_t pos, uint32_t color) {
@@ -15,39 +37,61 @@ void put_pixel(runtime_context_t* runtime_ctx, vec2_uint32_t pos, uint32_t color
 
     uint32_t row_size_in_pixels = runtime_ctx->framebuffer->pitch / 4;
 
-    uint64_t offset = (pos.y * row_size_in_pixels) + pos.y;
+    uint64_t offset = (pos.y * row_size_in_pixels) + pos.x;
 
     runtime_ctx->framebuffer->addr[offset] = color;
 }
 
-static const uint8_t tiny_font[2][16] = {
-    { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
-      0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF },
+// static constexpr uint8_t tiny_font[2][16] = {
+//     { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
+//       0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF },
 
-    { 0x00, 0x00, 0x18, 0x3C, 0x66, 0x66, 0x7E, 0x66, 
-      0x66, 0x66, 0x66, 0x00, 0x00, 0x00, 0x00, 0x00 }
-};
+//     { 0x00, 0x00, 0x18, 0x3C, 0x66, 0x66, 0x7E, 0x66, 
+//       0x66, 0x66, 0x66, 0x00, 0x00, 0x00, 0x00, 0x00 }
+// };
 
 static uint32_t cursor_x = 0;
 static uint32_t cursor_y = 0;
 
-void draw_char(runtime_context_t* runtime_ctx, char c, uint32_t fg_color, uint32_t bg_color) {
-    int glyph_index = (c == 'A' || c == 'a') ? 1 : 0;
-    const uint8_t* glyph = tiny_font[glyph_index];
+void draw_char(runtime_context_t* runtime_ctx, char c, uint32_t fg_color, uint32_t bg_color, uint32_t scale) {
+    uint32_t glyph_index = (uint8_t)c;
 
-    for (uint32_t row = 0; row < 16; row++) {
-        for (uint32_t col = 0; col < 8; col++) {
+    if (glyph_index >= active_font->numglyph) {
+        glyph_index = 0; 
+    }
+
+    uint8_t* font_data = (uint8_t*)active_font;
+    uint8_t* glyph = font_data + active_font->headersize + (glyph_index * active_font->bytesperglyph);
+
+    uint32_t bytes_per_row = (active_font->width + 7) / 8;
+
+    for (uint32_t row = 0; row < active_font->height; row++) {
+        for (uint32_t col = 0; col < active_font->width; col++) {
             
             vec2_uint32_t pos = vec2(cursor_x + col, cursor_y + row);
-            if (glyph[row] & (1 << (7 - col))) {
-                put_pixel(runtime_ctx, pos, fg_color);
-            } else {
-                put_pixel(runtime_ctx, pos, bg_color);
+
+            uint32_t byte_offset = (row * bytes_per_row) + (col / 8);
+            uint32_t bit_index = 7 - (col % 8);
+
+            uint32_t current_color = (glyph[byte_offset] & (1 << bit_index)) ? fg_color : bg_color;
+
+            // NEW: The Integer Scaling Loop!
+            // Instead of drawing 1 pixel, draw a block of (scale x scale) pixels
+            for (uint32_t sy = 0; sy < scale; sy++) {
+                for (uint32_t sx = 0; sx < scale; sx++) {
+                    // Multiply the base position by the scale, then add our sub-pixel offset
+                    vec2_uint32_t pos = vec2(
+                        cursor_x + (col * scale) + sx, 
+                        cursor_y + (row * scale) + sy
+                    );
+                    put_pixel(runtime_ctx, pos, current_color);
+                }
             }
         }
     }
 
-    cursor_x += 8;
+    // 4. Move the cursor forward by the dynamic width of the font
+    cursor_x += active_font->width * scale;
 }
 
 void draw_string(runtime_context_t* runtime_ctx, const char* text) {
@@ -57,7 +101,7 @@ void draw_string(runtime_context_t* runtime_ctx, const char* text) {
             cursor_x = 0;
             cursor_y += 16;
         } else {
-            draw_char(runtime_ctx, text[i], 0xFFFFFFFF, 0x00000000);
+            draw_char(runtime_ctx, text[i], 0xFFFFFFFF, 0x00000000, 1);
         }
         i++;
     }

@@ -76,9 +76,13 @@ void kernel_main() {
     qemu_print(&str);
     strfree(&str);
 
+    idt_init();
+
     // for (size_t i = 0; i < (runtime_ctx.framebuffer->pitch / 4) * runtime_ctx.framebuffer->height; i++) {
     //     runtime_ctx.framebuffer->addr[i] = 0xFFFFFFFF;
     // }
+
+    graphics_init(&runtime_ctx);
 
     for (uint32_t y = 100; y < 200; y++) {
         for (uint32_t x = 100; x < 200; x++) {
@@ -87,9 +91,7 @@ void kernel_main() {
         }
     }
 
-    draw_string(&runtime_ctx, "AAAA");
-
-    idt_init();
+    draw_string(&runtime_ctx, "Hello, World!");
 
     hlt();
 }

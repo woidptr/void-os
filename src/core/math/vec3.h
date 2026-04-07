@@ -9,8 +9,8 @@
     } vec2_##suffix##_t;
 
 DEFINE_VEC3(uint32_t, uint32);
-DEFINE_VEC3(float, fl)
-DEFINE_VEC3(int, integer)
+DEFINE_VEC3(float, fl);
+DEFINE_VEC3(int, integer);
 
 #undef DEFINE_VEC3
 

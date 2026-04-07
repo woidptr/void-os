@@ -1,0 +1,32 @@
+#include "resources.h"
+
+{%- for file in files %}
+constexpr uint8_t asset_{{ loop.index0 }}[] = {
+    #embed "{{ file.path }}"
+};
+{%- endfor %}
+
+typedef struct embedded_resource {
+    uint64_t path_hash;
+    const uint8_t* data;
+    size_t size;
+} embedded_resource_t;
+
+static const embedded_resource_t resources[{{ files|length }}] = {
+{%- for file in files %}
+    { {{ file.hash }}ULL, asset_{{ loop.index0 }}, sizeof(asset_{{ loop.index0 }}) },
+{%- endfor %}
+};
+
+resource_t resource_get(uint64_t path_hash) {
+    for (size_t i = 0; i < {{ files|length }}; i++) {
+        if (resources[i].path_hash == path_hash) {
+            return (resource_t){
+                .data = resources[i].data,
+                .size = resources[i].size,
+            };
+        }
+    }
+
+    return (resource_t){ .data = nullptr, .size = 0 };
+}
