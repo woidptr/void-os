@@ -13,8 +13,8 @@ typedef struct embedded_resource {
 } embedded_resource_t;
 
 static const embedded_resource_t resources[2] = {
-    { 860852674ULL, asset_0, sizeof(asset_0) },
-    { 3413961065ULL, asset_1, sizeof(asset_1) },
+    { 8401067076303466178ULL, asset_0, sizeof(asset_0) },
+    { 15005877801542842409ULL, asset_1, sizeof(asset_1) },
 };
 
 resource_t resource_get(uint64_t path_hash) {

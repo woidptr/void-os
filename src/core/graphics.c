@@ -6,7 +6,7 @@
 psf2_header_t* active_font = nullptr;
 
 void graphics_init(runtime_context_t* runtime_ctx) {
-    uintptr_t font_hash = 860852674ULL;
+    uintptr_t font_hash = cstrhash("ter-u16n.psf");
 
     resource_t font_res = resource_get(font_hash);
 

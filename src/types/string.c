@@ -58,3 +58,13 @@ void strappend(string_t* str, const char* text) {
     }
     str->data[str->length] = '\0';
 }
+
+uint64_t cstrhash(const char* cstr) {
+    uint64_t hash = 0xCBF29CE484222325;
+    while (*cstr) {
+        hash ^= (uint8_t)(*cstr++);
+        hash *= 0x100000001B3;
+    }
+
+    return hash;
+}
