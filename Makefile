@@ -1,32 +1,54 @@
 PROFILE ?= debug
-TARGET_ARCH = x86
+TARGET_ARCH ?= x86
 
 CC := $(shell brew --prefix llvm)/bin/clang
+CXX := $(shell brew --prefix llvm)/bin/clang++
+AS := $(CC)
+
+COMMON_FLAGS = -ffreestanding -Wall -Wextra \
+              -fno-pic -fno-pie -Ivendors/limine -Isrc \
+			  -Isrc/arch/$(TARGET_ARCH)/include
+
+BASE_CFLAGS = $(COMMON_FLAGS) -std=gnu23 --embed-dir=assets
+BASE_CXXFLAGS = $(COMMON_FLAGS) -std=c++23 -fno-exceptions -fno-rtti
+BASE_ASFLAGS = $(COMMON_FLAGS) -std=gnu23 -c -x assembler-with-cpp
 
 ifeq ($(TARGET_ARCH), x86)
-	TARGET_FLAG := --target=x86_64-elf
-	QEMU := qemu-system-x86_64
-else ifeq ($(TARGET_ARCH), arm)
-	TARGET_FLAG := --target=aarch64-elf
-	QEMU := qemu-system-aarch64
+    DEFAULT_BOOTLOADER := limine
+    QEMU := qemu-system-x86_64
+    ARCH_CFLAGS := --target=x86_64-elf -m64 -march=x86-64 -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -mcmodel=kernel
+else ifeq ($(TARGET_ARCH), arm64)
+    DEFAULT_BOOTLOADER := grub
+    QEMU := qemu-system-aarch64
+    ARCH_CFLAGS := --target=aarch64-elf -mgeneral-regs-only
+else ifeq ($(TARGET_ARCH), arm32)
+    DEFAULT_BOOTLOADER := grub
+    QEMU := qemu-system-arm
+    ARCH_CFLAGS := --target=arm-none-eabi -march=armv7-a -mfloat-abi=soft
+else
+    $(error "Unsupported or invalid TARGET_ARCH: '$(TARGET_ARCH)'. Valid options are: x86, arm64, arm32")
 endif
 
-AS = nasm
+BOOTLOADER ?= $(DEFAULT_BOOTLOADER)
+BOOT_SRC = src/boot/$(BOOTLOADER).c
 
-CFLAGS = $(TARGET_FLAG) -std=gnu23 -ffreestanding -Wall -Wextra \
-         -m64 -march=x86-64 -mno-red-zone -mno-mmx -mno-sse -mno-sse2 \
-         -mcmodel=kernel -fno-pic -fno-pie -Ivendors/limine -Isrc \
-		 --embed-dir=assets
-ASFLAGS = -f elf64
-LDFLAGS = -T linker.ld -nostdlib -z max-page-size=0x1000
+ifeq $(wildcard $(BOOT_SRC),)
+    $(error [FATAL] The bootloader '$(BOOTLOADER)' does not have an entry file at $(BOOT_SRC). It may not support $(TARGET_ARCH) or the file is missing.)
+endif
 
 ifeq ($(PROFILE),debug)
-	CFLAGS += -O0 -g
+    PROFILE_CFLAGS := -O0 -g
 else ifeq ($(PROFILE),release)
-	CFLAGS += -O2 -DNDEBUG
+    PROFILE_CFLAGS := -O2 -DNDEBUG
 else
-	$(error "Invalid PROFILE!")
+    $(error "Invalid PROFILE!")
 endif
+
+CFLAGS = $(BASE_CFLAGS) $(ARCH_CFLAGS) $(PROFILE_CFLAGS)
+CXXFLAGS = $(BASE_CXXFLAGS) $(ARCH_CFLAGS) $(PROFILE_CFLAGS)
+ASFLAGS = $(BASE_ASFLAGS) $(ARCH_CFLAGS) $(PROFILE_CFLAGS)
+
+LDFLAGS = -T linker.ld -nostdlib -z max-page-size=0x1000
 
 REQUIRED_BINS := $(CC) $(AS) xorriso qemu-system-x86_64 uv
 $(foreach bin,$(REQUIRED_BINS),\
@@ -40,17 +62,18 @@ TARGET_ELF = $(BUILD_DIR)/kernel.elf
 TARGET_ISO = $(BUILD_DIR)/myos.iso
 LIMINE_DIR = vendors/limine
 
-ALL_SRCS := $(shell find $(SRC_DIR) -name '*.c')
-CORE_SRCS := $(filter-out $(SRC_DIR)/arch/%, $(ALL_SRCS))
+CXX_SRCS := $(shell find $(SRC_DIR) -name '*.cpp')
+AS_SRCS := $(shell find $(SRC_DIR) -name '*.S')
+
+CORE_SRCS := $(shell find $(SRC_DIR) -name '*.c' ! -path '$(SRC_DIR)/boot/*' ! -path '$(SRC_DIR)/arch/*')
 ARCH_SRCS := $(shell find $(SRC_DIR)/arch/$(TARGET_ARCH) -name '*.c')
-# C_SRCS := $(shell find $(SRC_DIR) -name '*.c')
-C_SRCS := $(CORE_SRCS) $(ARCH_SRCS)
+C_SRCS := $(CORE_SRCS) $(ARCH_SRCS) $(BOOT_SRC)
+
 C_OBJS := $(C_SRCS:%.c=$(BUILD_DIR)/%.o)
+CXX_OBJS := $(CXX_SRCS:%.cpp=$(BUILD_DIR)/%.o)
+AS_OBJS := $(AS_SRCS:%.S=$(BUILD_DIR)/%.o)
 
-AS_SRCS := $(shell find $(SRC_DIR) -name '*.asm')
-AS_OBJS := $(AS_SRCS:%.asm=$(BUILD_DIR)/%.o)
-
-OBJECTS := $(C_OBJS) $(AS_OBJS)
+OBJECTS := $(C_OBJS) $(CXX_OBJS) $(AS_OBJS)
 
 .PHONY: all run clean
 
@@ -60,12 +83,16 @@ $(BUILD_DIR)/%.o: %.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(BUILD_DIR)/%.o: %.asm
+$(BUILD_DIR)/%.o: %.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: %.S
 	@mkdir -p $(dir $@)
 	$(AS) $(ASFLAGS) $< -o $@
 
 $(TARGET_ELF): $(OBJECTS)
-	$(CC) $(TARGET_FLAG) $(LDFLAGS) -o $@ $^
+	$(CC) $(ARCH_CFLAGS) $(LDFLAGS) -o $@ $^
 
 $(TARGET_ISO): $(TARGET_ELF) limine.conf
 	@uv run --project builder -m builder --rootdir $(CURDIR)

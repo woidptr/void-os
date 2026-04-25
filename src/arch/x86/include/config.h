@@ -1,0 +1,4 @@
+#pragma once
+
+#define PAGE_SIZE 4096
+#define HEAP_START_VIRTUAL 0xFFFFC00000000000
