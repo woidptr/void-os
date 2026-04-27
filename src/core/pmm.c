@@ -82,6 +82,38 @@ void* pmm_alloc_page(struct pmm_ctx* pmm) {
     return nullptr;
 }
 
+void* pmm_alloc_pages(struct pmm_ctx* pmm, size_t count) {
+    if (count == 0) return nullptr;
+    if (count == 1) return pmm_alloc_page(pmm);
+
+    size_t consecutive_free = 0;
+    size_t start_index = 0;
+
+    for (size_t i = 0; i < pmm->total_pages; i++) {
+        if (!bitmap_test(pmm->bitmap, i)) {
+            if (consecutive_free == 0) {
+                start_index = 0;
+            }
+            consecutive_free++;
+
+            if (consecutive_free == count) {
+                for (size_t j = 0; j < count; j++) {
+                    bitmap_set(pmm->bitmap, start_index + j);
+                }
+
+                pmm->free_pages -= count;
+                pmm->last_allocated_index = start_index + count;
+
+                return (void*)(start_index * PAGE_SIZE);
+            }
+        } else {
+            consecutive_free = 0;
+        }
+    }
+
+    return nullptr;
+}
+
 void pmm_free_page(struct pmm_ctx* pmm, void* ptr) {
     if (ptr == nullptr) return;
 

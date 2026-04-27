@@ -32,9 +32,9 @@ endif
 BOOTLOADER ?= $(DEFAULT_BOOTLOADER)
 BOOT_SRC = src/boot/$(BOOTLOADER).c
 
-ifeq $(wildcard $(BOOT_SRC),)
-    $(error [FATAL] The bootloader '$(BOOTLOADER)' does not have an entry file at $(BOOT_SRC). It may not support $(TARGET_ARCH) or the file is missing.)
-endif
+# ifeq ($(wildcard $(BOOT_SRC)),)
+#     $(error "[FATAL] The bootloader '$(BOOTLOADER)' does not have an entry file at $(BOOT_SRC). It may not support $(TARGET_ARCH) or the file is missing.")
+# endif
 
 ifeq ($(PROFILE),debug)
     PROFILE_CFLAGS := -O0 -g

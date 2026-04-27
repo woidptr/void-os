@@ -1,5 +1,6 @@
 #include <limine.h>
 #include <stddef.h>
+#include "boot.h"
 #include "kernel.h"
 
 __attribute__((used, section(".limine_requests")))
@@ -29,6 +30,12 @@ static volatile struct limine_framebuffer_request fb_req = {
 __attribute__((used, section(".limine_requests")))
 static volatile struct limine_executable_address_request exe_addr_req = {
     .id = LIMINE_EXECUTABLE_ADDRESS_REQUEST_ID,
+    .revision = 0,
+};
+
+__attribute__((used, section(".limine_requests")))
+static volatile struct limine_rsdp_request rsdp_req = {
+    .id = LIMINE_RSDP_REQUEST_ID,
     .revision = 0,
 };
 
@@ -105,7 +112,7 @@ void _start() {
         .memory_map = &mm_ctx,
         .hhdm_offset = hhdm_request.response->offset,
         .screen = &fb_ctx,
-        .rsdp = nullptr,
+        .rsdp = rsdp_req.response->address,
         .kernel_physical_base = exe_addr_req.response->physical_base,
         .kernel_virtual_base = exe_addr_req.response->virtual_base,
     };

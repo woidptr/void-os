@@ -35,4 +35,5 @@ static inline bool bitmap_test(const uint8_t* bitmap, size_t bit) {
 
 void  pmm_init(struct kernel_ctx* kctx, struct memmap_ctx* memmap, uint64_t hhdm_offset);
 void* pmm_alloc_page(struct pmm_ctx* pmm);
+void* pmm_alloc_pages(struct pmm_ctx* pmm, size_t count);
 void  pmm_free_page(struct pmm_ctx* pmm, void* ptr);
