@@ -4,6 +4,8 @@
 #include "lib/cmem.h"
 #include <config.h>
 
+extern void gdt_load(struct gdt_ptr* ptr);
+
 static void gdt_set_gate(struct gdt_ctx* ctx, uint32_t core_id, int num, uint8_t access, uint8_t flags) {
     ctx->entries[core_id][num].limit_low   = 0;
     ctx->entries[core_id][num].base_low    = 0;
@@ -40,5 +42,5 @@ void gdt_init_core(struct gdt_ctx* ctx, uint32_t core_id) {
     gdt_set_gate(ctx, core_id, 3, 0xF2, 0x00);
     gdt_set_gate(ctx, core_id, 4, 0xFA, 0x20);
 
-
+    gdt_load(&ctx->pointers[core_id]);
 }

@@ -13,6 +13,9 @@ void kernel_main(struct boot_info* info) {
 
     cpu_init_bsp(&kctx, info->hhdm_offset);
 
+    // __asm__ volatile ("int $3");
+
+    // Broken shit
     // vmm_init(&kctx, info);
     // heap_init(&kctx);
 
