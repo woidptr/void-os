@@ -40,8 +40,8 @@ void vmm_init(struct kernel_ctx* kctx, struct boot_info* info) {
     );
 }
 
-static struct page_table* get_next_level(struct vmm_ctx* vmm, struct pmm_ctx* pmm, size_t index, uint64_t flags) {
-    uint64_t entry = vmm->pml4->entries[index];
+static struct page_table* get_next_level(struct page_table* parent_table, struct vmm_ctx* vmm, struct pmm_ctx* pmm, size_t index, uint64_t flags) {
+    uint64_t entry = parent_table->entries[index];
 
     if ((entry & PTE_PRESENT) != 0) {
         uint64_t phys_addr = pte_get_frame(entry);
@@ -57,7 +57,7 @@ static struct page_table* get_next_level(struct vmm_ctx* vmm, struct pmm_ctx* pm
     struct page_table* new_table = (struct page_table*)((uint64_t)new_page + vmm->hhdm_offset);
     memset(new_table, 0, PAGE_SIZE);
 
-    vmm->pml4->entries[index] = (uint64_t)new_page | flags | PTE_PRESENT | PTE_WRITABLE;
+    parent_table->entries[index] = (uint64_t)new_page | flags | PTE_PRESENT | PTE_WRITABLE;
 
     return new_table;
 }
@@ -71,9 +71,9 @@ void vmm_map_page(struct vmm_ctx* vmm, struct pmm_ctx* pmm, uint64_t virtual_add
     size_t pd_idx   = (virtual_addr >> 21) & 0x1FF;
     size_t pt_idx   = (virtual_addr >> 12) & 0x1FF;
 
-    struct page_table* pdpt = get_next_level(vmm, pmm, pml4_idx, flags);
-    struct page_table* pd   = get_next_level(vmm, pmm, pdpt_idx, flags);
-    struct page_table* pt   = get_next_level(vmm, pmm, pd_idx, flags);
+    struct page_table* pdpt = get_next_level(vmm->pml4, vmm, pmm, pml4_idx, flags);
+    struct page_table* pd   = get_next_level(pdpt, vmm, pmm, pdpt_idx, flags);
+    struct page_table* pt   = get_next_level(pd, vmm, pmm, pd_idx, flags);
 
     pt->entries[pt_idx] = physical_addr | flags | PTE_PRESENT;
 }
