@@ -1,3 +1,5 @@
 #pragma once
+#include <stdint.h>
+#include "core/hal/interrupts.h"
 
-void kernel_panic();
+[[noreturn]] void kernel_panic();

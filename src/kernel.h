@@ -1,7 +1,8 @@
+#pragma once
 #include <stdint.h>
-#include "core/pmm.h"
-#include "core/vmm.h"
-#include "core/heap.h"
+#include "core/mm/pmm.h"
+#include "core/mm/vmm.h"
+#include "core/mm/heap.h"
 #include "boot/boot.h"
 #include "core/hal/smp.h"
 #include <arch.h>

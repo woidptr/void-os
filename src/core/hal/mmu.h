@@ -1,7 +1,7 @@
 #pragma once
 #include <stdint.h>
 #include <stddef.h>
-#include "core/pmm.h"
+#include "core/mm/pmm.h"
 
 #define HAL_PAGE_PRESENT  (1 << 0)
 #define HAL_PAGE_WRITABLE (1 << 1)

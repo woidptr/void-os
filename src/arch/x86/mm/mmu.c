@@ -1,6 +1,6 @@
 #include "core/hal/mmu.h"
 #include "lib/cmem.h"
-#include "core/vmm.h"
+#include "core/mm/vmm.h"
 
 #define PTE_PRESENT  (1ull << 0)
 #define PTE_WRITABLE (1ull << 1)

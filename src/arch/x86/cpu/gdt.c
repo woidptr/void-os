@@ -1,6 +1,6 @@
 #include <stdint.h>
 #include "gdt.h"
-#include "core/pmm.h"
+#include "core/mm/pmm.h"
 #include "lib/cmem.h"
 #include <config.h>
 
