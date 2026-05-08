@@ -25,6 +25,12 @@ SECTIONS
     /* 2. READ-ONLY DATA */
     .rodata : {
         *(.rodata .rodata.*)
+
+        . = ALIGN(8);
+        PROVIDE_HIDDEN (__init_array_start = .);
+        KEEP (*(SORT(.init_array.*)))
+        KEEP (*(.init_array*))
+        PROVIDE_HIDDEN (__init_array_end = .);
     } :rodata
 
     /* Move to a fresh 4KB page */

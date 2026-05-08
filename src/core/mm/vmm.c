@@ -1,11 +1,12 @@
 #include "vmm.h"
-#include "kernel.h"
+#include "core/kernel.h"
 #include "lib/cmem.h"
+#include "core/panic.h"
 
 void vmm_init(struct kernel_ctx* kctx, struct boot_info* info) {
-    void* pml4_phys = pmm_alloc_page(&kctx->pmm);
-    if (pml4_phys == nullptr) {
-        for (;;) __asm__("hlt");
+    phys_addr_t pml4_phys = pmm_alloc_page(&kctx->pmm);
+    if (pml4_phys == 0) {
+        kernel_panic(kctx, "Failed to allocate physical page for root PML4 table. Out of memory!");
     }
 
     kctx->vmm.hhdm_offset = info->hhdm_offset;
@@ -49,9 +50,9 @@ static struct page_table* get_next_level(struct page_table* parent_table, struct
         return (struct page_table*)(phys_addr + vmm->hhdm_offset);
     }
 
-    void* new_page = pmm_alloc_page(pmm);
-    if (new_page == nullptr) {
-        for (;;) __asm__("hlt");
+    phys_addr_t new_page = pmm_alloc_page(pmm);
+    if (new_page == 0) {
+        return 0;
     }
 
     struct page_table* new_table = (struct page_table*)((uint64_t)new_page + vmm->hhdm_offset);
@@ -76,4 +77,48 @@ void vmm_map_page(struct vmm_ctx* vmm, struct pmm_ctx* pmm, uint64_t virtual_add
     struct page_table* pt   = get_next_level(pd, vmm, pmm, pd_idx, flags);
 
     pt->entries[pt_idx] = physical_addr | flags | PTE_PRESENT;
+}
+
+static uint64_t* vmm_get_pte(struct vmm_ctx* vmm, uint64_t virtual_addr) {
+    uint64_t pml4_idx = (virtual_addr >> 39) & 0x1FF;
+    uint64_t pdpt_idx = (virtual_addr >> 30) & 0x1FF;
+    uint64_t pd_idx   = (virtual_addr >> 21) & 0x1FF;
+    uint64_t pt_idx   = (virtual_addr >> 12) & 0x1FF;
+
+    uint64_t* pml4 = (uint64_t*)vmm->pml4;
+    if (!(pml4[pml4_idx] & PTE_PRESENT)) {
+        return nullptr;
+    }
+
+    uint64_t* pdpt = (uint64_t*)((pml4[pml4_idx] & ~0xFFF) + vmm->hhdm_offset);
+    if (!(pdpt[pdpt_idx] & PTE_PRESENT)) {
+        return nullptr;
+    }
+
+    uint64_t* pd = (uint64_t*)((pdpt[pdpt_idx] & ~0xFFF) + vmm->hhdm_offset);
+    if (!(pd[pd_idx] & PTE_PRESENT)) {
+        return nullptr;
+    }
+
+    uint64_t* pt = (uint64_t*)((pd[pd_idx] & ~0xFFF) + vmm->hhdm_offset);
+
+    return &pt[pt_idx];
+}
+
+phys_addr_t vmm_get_physical_address(struct vmm_ctx* vmm, uint64_t virtual_addr) {
+    uint64_t* pte = vmm_get_pte(vmm, virtual_addr);
+
+    if (!pte || !(*pte & PTE_PRESENT)) return 0;
+
+    return (phys_addr_t)(*pte & ~0xFFF);
+}
+
+void vmm_unmap_page(struct vmm_ctx* vmm, uint64_t virtual_addr) {
+    uint64_t* pte = vmm_get_pte(vmm, virtual_addr);
+
+    if (!pte || !(*pte & PTE_PRESENT)) return;
+
+    *pte = 0;
+
+    __asm__ volatile("invlpg (%0)" :: "r"(virtual_addr) : "memory");
 }

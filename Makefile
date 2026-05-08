@@ -48,7 +48,8 @@ CFLAGS = $(BASE_CFLAGS) $(ARCH_CFLAGS) $(PROFILE_CFLAGS)
 CXXFLAGS = $(BASE_CXXFLAGS) $(ARCH_CFLAGS) $(PROFILE_CFLAGS)
 ASFLAGS = $(BASE_ASFLAGS) $(ARCH_CFLAGS) $(PROFILE_CFLAGS)
 
-LDFLAGS = -T linker.ld -nostdlib -z max-page-size=0x1000
+LINKER_SCRIPT = $(BUILD_DIR)/linker.ld
+LDFLAGS = -T $(LINKER_SCRIPT) -nostdlib -z max-page-size=0x1000
 
 REQUIRED_BINS := $(CC) $(AS) xorriso qemu-system-x86_64 uv
 $(foreach bin,$(REQUIRED_BINS),\
@@ -91,11 +92,18 @@ $(BUILD_DIR)/%.o: %.S
 	@mkdir -p $(dir $@)
 	$(AS) $(ASFLAGS) $< -o $@
 
-$(TARGET_ELF): $(OBJECTS)
-	$(CC) $(ARCH_CFLAGS) $(LDFLAGS) -o $@ $^
+$(LINKER_SCRIPT): linker.ld.S
+	@mkdir -p $(dir $@)
+	$(CC) -E -P -x c \
+		-I src/arch/$(TARGET_ARCH)/ \
+		-I src/boot/$(BOOTLOADER)/ \
+		$< > $@
 
+$(TARGET_ELF): $(OBJECTS) $(LINKER_SCRIPT)
+	$(CC) $(ARCH_CFLAGS) $(LDFLAGS) -o $@ $(OBJECTS)
+
+# @uv run --project builder -m builder --rootdir $(CURDIR)
 $(TARGET_ISO): $(TARGET_ELF) limine.conf
-	@uv run --project builder -m builder --rootdir $(CURDIR)
 
 	rm -rf $(ISO_DIR)
 	mkdir -p $(ISO_DIR)/boot/limine

@@ -4,6 +4,7 @@
 #include <config.h>
 
 typedef uint8_t bitmap_block_t;
+typedef uintptr_t phys_addr_t;
 
 #define bitmap_empty ((bitmap_block_t)0)
 #define bitmap_full  ((bitmap_block_t)~0)
@@ -33,7 +34,7 @@ static inline bool bitmap_test(const uint8_t* bitmap, size_t bit) {
     return (bitmap[bit / 8] & (1 << (bit % 8))) != 0;
 }
 
-void  pmm_init(struct kernel_ctx* kctx, struct memmap_ctx* memmap, uint64_t hhdm_offset);
-void* pmm_alloc_page(struct pmm_ctx* pmm);
-void* pmm_alloc_pages(struct pmm_ctx* pmm, size_t count);
-void  pmm_free_page(struct pmm_ctx* pmm, void* ptr);
+void pmm_init(struct kernel_ctx* kctx, struct memmap_ctx* memmap, uint64_t hhdm_offset);
+[[nodiscard]] phys_addr_t pmm_alloc_page(struct pmm_ctx* pmm);
+[[nodiscard]] phys_addr_t pmm_alloc_pages(struct pmm_ctx* pmm, size_t count);
+void pmm_free_page(struct pmm_ctx* pmm, phys_addr_t addr);

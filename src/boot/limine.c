@@ -1,7 +1,7 @@
 #include <limine.h>
 #include <stddef.h>
 #include "boot.h"
-#include "kernel.h"
+#include "core/kernel.h"
 
 __attribute__((used, section(".limine_requests")))
 static volatile uint64_t requests_start_marker[] = LIMINE_REQUESTS_START_MARKER;
@@ -99,19 +99,19 @@ void _start() {
         mm_ctx.entry_count++;
     }
 
-    struct framebuffer_ctx fb_ctx;
+    struct framebuffer fb;
     if (fb_req.response && fb_req.response->framebuffer_count > 0) {
         struct limine_framebuffer* l_fb = fb_req.response->framebuffers[0];
-        fb_ctx.addr = l_fb->address;
-        fb_ctx.width = l_fb->width;
-        fb_ctx.height = l_fb->height;
-        fb_ctx.pitch = l_fb->pitch;
+        fb.addr = l_fb->address;
+        fb.width = l_fb->width;
+        fb.height = l_fb->height;
+        fb.pitch = l_fb->pitch;
     }
 
     struct boot_info info = {
         .memory_map = &mm_ctx,
         .hhdm_offset = hhdm_request.response->offset,
-        .screen = &fb_ctx,
+        .screen = &fb,
         .rsdp = rsdp_req.response->address,
         .kernel_physical_base = exe_addr_req.response->physical_base,
         .kernel_virtual_base = exe_addr_req.response->virtual_base,

@@ -1,0 +1,2 @@
+#define BOOTLOADER_SPECIFIC_SECTIONS \
+    KEEP(*(.limine_requests))

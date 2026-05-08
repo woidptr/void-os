@@ -1,7 +1,7 @@
 #include "heap.h"
 #include "pmm.h"
 #include "vmm.h"
-#include "kernel.h"
+#include "core/kernel.h"
 
 #define HEAP_START_VIRTUAL 0xFFFFC00000000000
 
@@ -37,6 +37,29 @@ void* heap_alloc(struct heap_ctx* heap, size_t size) {
 
     size_t total_size = size + sizeof(struct alloc_header);
 
+    if (total_size > PAGE_SIZE / 2) {
+        size_t pages_needed = (total_size + PAGE_SIZE - 1) / PAGE_SIZE;
+
+        uint64_t start_virt = heap->current_top;
+        heap->current_top += pages_needed * PAGE_SIZE;
+
+        uint64_t flags = PTE_PRESENT | PTE_WRITABLE | PTE_NO_EXECUTE;
+
+        for (size_t i = 0; i < pages_needed; i++) {
+            phys_addr_t frame = pmm_alloc_page(heap->pmm);
+            if (frame == 0) {
+                return nullptr;
+            }
+
+            vmm_map_page(heap->vmm, heap->pmm, start_virt + (i * PAGE_SIZE), (uint64_t)frame, flags);
+        }
+
+        struct alloc_header* header = (struct alloc_header*)start_virt;
+        header->size = (size_t)-1;
+
+        return (void*)((uintptr_t)header + sizeof(struct alloc_header));
+    }
+
     int bucket_index = -1;
     for (int i = 0; i < HEAP_BUCKET_COUNT; i++) {
         if (heap->buckets[i].size >= total_size) {
@@ -52,8 +75,8 @@ void* heap_alloc(struct heap_ctx* heap, size_t size) {
     struct heap_bucket* bucket = &heap->buckets[bucket_index];
 
     if (bucket->free_list == nullptr) {
-        void* phys_frame = pmm_alloc_page(heap->pmm);
-        if (!phys_frame) {
+        phys_addr_t phys_frame = pmm_alloc_page(heap->pmm);
+        if (phys_frame == 0) {
             return nullptr;
         }
 
@@ -87,6 +110,25 @@ void heap_free(struct heap_ctx* heap, void* ptr) {
     if (!ptr) return;
 
     struct alloc_header* header = (struct alloc_header*)((uintptr_t)ptr - sizeof(struct alloc_header));
+
+    if (header->size & (1ULL << 63)) {
+        size_t pages = header->size & ~(1ULL << 63);
+        uint64_t virt_addr = (uint64_t)header;
+
+        for (size_t i = 0; i < pages; i++) {
+            uint64_t current_virt = virt_addr + (i * PAGE_SIZE);
+
+            phys_addr_t phys = vmm_get_physical_address(heap->vmm, current_virt);
+
+            if (phys) {
+                pmm_free_page(heap->pmm, phys);
+            }
+
+            vmm_unmap_page(heap->vmm, phys);
+        }
+
+        return;
+    }
 
     size_t bucket_index = header->size;
 

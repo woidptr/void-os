@@ -1,11 +1,7 @@
 #include "core/hal/cpu.h"
-#include "gdt.h"
-#include "idt.h"
-#include "kernel.h"
-
-void cpu_halt() {
-    __asm__ volatile ("hlt");
-}
+#include "gdt/gdt.h"
+#include "idt/idt.h"
+#include "core/kernel.h"
 
 void cpu_lock() {
     for (;;) {
@@ -25,4 +21,12 @@ void cpu_init_ap(struct kernel_ctx* kctx, uint32_t core_id) {
     gdt_init_core(&kctx->arch.gdt, core_id);
 
     idt_init_core(&kctx->arch.idt);
+}
+
+void cpu_enable_interrupts() {
+    __asm__ volatile ("sti");
+}
+
+void cpu_disbale_interrupts() {
+    __asm__ volatile ("cli");
 }

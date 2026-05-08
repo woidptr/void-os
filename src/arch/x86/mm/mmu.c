@@ -8,8 +8,10 @@
 #define PTE_GET_FRAME(entry) ((entry) & 0x000FFFFFFFFFF000ull)
 
 void* mmu_create_directory(struct pmm_ctx* pmm, uint64_t hhdm_offset) {
-    void* phys = pmm_alloc_page(pmm);
-    if (!phys) return nullptr;
+    phys_addr_t phys = pmm_alloc_page(pmm);
+    if (phys == 0) {
+        return nullptr;
+    }
 
     void* virt = (void*)((uint64_t)phys + hhdm_offset);
     memset(virt, 0, 4096);
@@ -23,8 +25,10 @@ static struct page_table* get_next_level(struct page_table* current_level, size_
         return (struct page_table*)(PTE_GET_FRAME(entry) + hhdm);
     }
 
-    void* new_page = pmm_alloc_page(pmm);
-    if (!new_page) for(;;) __asm__("hlt");
+    phys_addr_t new_page = pmm_alloc_page(pmm);
+    if (new_page == 0) {
+        for(;;) __asm__("hlt");
+    }
 
     struct page_table* new_table = (struct page_table*)((uint64_t)new_page + hhdm);
     memset(new_table, 0, 4096);

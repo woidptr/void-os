@@ -17,23 +17,7 @@ struct interrupt_frame {
 
 typedef void (*interrupt_handler_t)(struct interrupt_frame* frame);
 
-/**
- * @brief Globally enables hardware interrupts on the current core.
- * 
- * This function allows the CPU to respond to external hardware signals 
- * (like timer pulses or keyboard events). It should be called after the 
- * IDT is fully initialized.
- */
-void interrupts_enable();
-
-/**
- * @brief Globally disables hardware interrupts on the current core.
- * 
- * This function prevents the CPU from being interrupted by hardware events. 
- * It is commonly used to protect "critical sections" of code where 
- * atomicity is required.
- */
-void interrupts_disable();
+void ints_init();
 
 /**
  * @brief Registers a software handler for a specific interrupt vector.
@@ -46,4 +30,4 @@ void interrupts_disable();
  * @param vector  The 8-bit interrupt vector number (0-255).
  * @param handler Pointer to the C function that will process the interrupt.
  */
-void interrupts_register(struct kernel_ctx* kctx, uint8_t vector, interrupt_handler_t handler);
+void ints_register(struct kernel_ctx* kctx, uint8_t vector, interrupt_handler_t handler);

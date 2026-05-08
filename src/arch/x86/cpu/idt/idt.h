@@ -1,7 +1,9 @@
 #pragma once
 #include <stdint.h>
 #include <stddef.h>
-#include "core/hal/interrupts.h"
+#include "core/hal/ints.h"
+
+struct kernel_ctx;
 
 enum cpu_exception {
     EXCEPTION_DIVIDE_BY_ZERO = 0,
@@ -57,4 +59,4 @@ struct idt_ctx {
 void idt_init_system(struct idt_ctx* idt);
 void idt_init_core(struct idt_ctx* idt);
 void idt_set_handler(struct idt_ctx* idt, uint8_t vector, interrupt_handler_t handler);
-void idt_handler(struct idt_ctx* idt, struct interrupt_frame* frame);
+void idt_handler(struct kernel_ctx* kctx, struct interrupt_frame* frame);

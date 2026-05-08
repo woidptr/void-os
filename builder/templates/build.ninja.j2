@@ -1,0 +1,47 @@
+cc = {{ cc }}
+cxx = {{ cxx }}
+as = {{ as_bin }}
+qemu = {{ qemu }}
+
+cflags = {{ base_cflags }} {{ arch_cflags }} {{ profile_flags }}
+cxxflags = {{ base_cxxflags }} {{ arch_cflags }} {{ profile_cflags }}
+asflags = {{ base_asflags }} {{ arch_cflags }} {{ profile_cflags }}
+ldflags = {{ ldflags }}
+arch_cflags = {{ arch_cflags }}
+
+build_dir = {{ build_dir }}
+iso_dir = {{ iso_dir }}
+limine_dir = {{ limine_dir }}
+
+rule cc
+    command = $cc $cflags -MMD -MT $out -MF $out.d -c $in -o $out
+    description = CC $out
+    depfile = $out.d
+    deps = gcc
+
+rule cxx
+    command = $cxx $cxxflags -MMD -MT $out -MF $out.d -c $in -o $out
+    description = CXX $out
+    depfile = $out.d
+    deps = gcc
+
+rule as
+    command = $as $asflags -MMD -MT $out -MF $out.d -c $in -o $out
+    description = AS $out
+    depfile = $out.d
+    deps = gcc
+
+rule run_qemu
+    command = $qemu -cdrom $in -m 256M -debugcon stdio
+    description = RUN $in
+    pool = console
+
+build {{ linker_script }}: preprocess_ld linker.ld.S
+
+{% for src in c_srcs %}
+build {{ build_dir }}/{{ src }}.o: cc {{ src }}
+{% endfor %}
+
+{% for src in cxx_srcs %}
+build {{ build_dir }}/{{ src }}.o: cxx {{ src }}
+{% endfor %}

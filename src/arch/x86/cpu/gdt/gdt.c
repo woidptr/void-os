@@ -21,7 +21,7 @@ void gdt_init_system(struct gdt_ctx* ctx, uint32_t core_count, struct pmm_ctx* p
     size_t total_size = gdt_size + gp_size;
     size_t pages_needed = (total_size + PAGE_SIZE - 1) / PAGE_SIZE;
 
-    void* phys_ptr = pmm_alloc_pages(pmm, pages_needed);
+    phys_addr_t phys_ptr = pmm_alloc_pages(pmm, pages_needed);
 
     uint64_t virt_ptr = (uint64_t)phys_ptr + hhdm_offset;
 

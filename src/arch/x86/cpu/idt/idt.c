@@ -1,5 +1,6 @@
 #include "idt.h"
 #include "core/panic.h"
+#include "core/kernel.h"
 
 extern uintptr_t isr_stub_table[];
 
@@ -13,6 +14,23 @@ static void idt_set_gate(struct idt_ctx* idt, uint8_t vector, void* isr_ptr, uin
     idt->entries[vector].offset_mid = (uint16_t)((isr_addr >> 16) & 0xFFFF);
     idt->entries[vector].offset_high = (uint32_t)(isr_addr >> 32);
     idt->entries[vector].zero = 0;
+}
+
+static const char* get_exception_name(enum cpu_exception exception) {
+    switch (exception) {
+        case EXCEPTION_DIVIDE_BY_ZERO: {
+            return "DIVIDE BY ZERO";
+        }
+        case EXCEPTION_DEBUG: {
+            return "DEBUG";
+        }
+        case EXCEPTION_NMI: {
+            return "NMI";
+        }
+        default: {
+            return "UNKNOWN";
+        }
+    }
 }
 
 void idt_init_system(struct idt_ctx* idt) {
@@ -33,14 +51,14 @@ void idt_set_handler(struct idt_ctx* idt, uint8_t vector, interrupt_handler_t ha
     idt->drivers[vector] = handler;
 }
 
-void idt_handler(struct idt_ctx* idt, struct interrupt_frame* frame) {
-    interrupt_handler_t driver = idt->drivers[frame->vector];
+void idt_handler(struct kernel_ctx* kctx, struct interrupt_frame* frame) {
+    interrupt_handler_t driver = kctx->arch.idt.drivers[frame->vector];
 
     if (driver != nullptr) {
         driver(frame);
     } else {
         if (frame->vector < EXCEPTION_MAX_RESERVED) {
-            kernel_panic();
+            kernel_panic(kctx, get_exception_name(frame->vector));
         }
     }
 }

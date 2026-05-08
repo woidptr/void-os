@@ -28,3 +28,5 @@ struct vmm_ctx {
 
 void vmm_init(struct kernel_ctx* kctx, struct boot_info* info);
 void vmm_map_page(struct vmm_ctx* vmm, struct pmm_ctx* kctx, uint64_t virtual_addr, uint64_t physical_addr, uint64_t flags);
+phys_addr_t vmm_get_physical_address(struct vmm_ctx* vmm, uint64_t virtual_addr);
+void vmm_unmap_page(struct vmm_ctx* vmm, uint64_t virtual_addr);

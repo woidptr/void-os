@@ -2,7 +2,8 @@
 #include <stddef.h>
 #include "lib/cmem.h"
 #include "core/hal/cpu.h"
-#include "kernel.h"
+#include "core/kernel.h"
+#include "core/panic.h"
 
 #define align_up(value, alignment) (((value) + (alignment) - 1) & ~((alignment) - 1))
 
@@ -23,22 +24,26 @@ void pmm_init(struct kernel_ctx* kctx, struct memmap_ctx* memmap, uint64_t hhdm_
     pmm->bitmap_size = align_up(pmm->total_pages / 8, PAGE_SIZE);
     pmm->free_pages = 0;
     pmm->last_allocated_index = 0;
-
     pmm->bitmap = nullptr;
+
+    uint64_t bitmap_phys = 0;
     for (size_t i = 0; i < memmap->entry_count; i++) {
         struct memmap_entry* entry = &memmap->entries[i];
 
         if (entry->type == MEMMAP_USABLE && entry->length >= pmm->bitmap_size) {
-            pmm->bitmap = (uint8_t*)(entry->base + hhdm_offset);
+            bitmap_phys = entry->base;
+            pmm->bitmap = (uint8_t*)(uintptr_t)(bitmap_phys + hhdm_offset);
 
-            entry->base += pmm->bitmap_size;
-            entry->length -= pmm->bitmap_size;
+            // pmm->bitmap = (uint8_t*)(uintptr_t)(entry->base + hhdm_offset);
+
+            // entry->base += pmm->bitmap_size;
+            // entry->length -= pmm->bitmap_size;
             break;
         }
     }
 
     if (pmm->bitmap == nullptr) {
-        cpu_halt();
+        kernel_panic(kctx, "Could not find memory for the bitmap");
     }
 
     memset(pmm->bitmap, 0xFF, pmm->bitmap_size);
@@ -56,16 +61,24 @@ void pmm_init(struct kernel_ctx* kctx, struct memmap_ctx* memmap, uint64_t hhdm_
             }
         }
     }
+
+    uint64_t bitmap_start_page = bitmap_phys / PAGE_SIZE;
+    uint64_t bitmap_pages = (pmm->bitmap_size + PAGE_SIZE - 1) / PAGE_SIZE;
+    
+    for (uint64_t p = bitmap_start_page; p < bitmap_start_page + bitmap_pages; p++) {
+        bitmap_set(pmm->bitmap, p);
+        pmm->free_pages--;
+    }
 }
 
-void* pmm_alloc_page(struct pmm_ctx* pmm) {
+phys_addr_t pmm_alloc_page(struct pmm_ctx* pmm) {
     for (size_t i = pmm->last_allocated_index; i < pmm->total_pages; i++) {
         if (!bitmap_test(pmm->bitmap, i)) {
             bitmap_set(pmm->bitmap, i);
             pmm->free_pages--;
             pmm->last_allocated_index = i;
 
-            return (void*)(i * PAGE_SIZE);
+            return (phys_addr_t)(i * PAGE_SIZE);
         }
     }
 
@@ -75,15 +88,15 @@ void* pmm_alloc_page(struct pmm_ctx* pmm) {
             pmm->free_pages--;
             pmm->last_allocated_index = i;
 
-            return (void*)(i * PAGE_SIZE);
+            return (phys_addr_t)(i * PAGE_SIZE);
         }
     }
 
-    return nullptr;
+    return 0;
 }
 
-void* pmm_alloc_pages(struct pmm_ctx* pmm, size_t count) {
-    if (count == 0) return nullptr;
+phys_addr_t pmm_alloc_pages(struct pmm_ctx* pmm, size_t count) {
+    if (count == 0) return 0;
     if (count == 1) return pmm_alloc_page(pmm);
 
     size_t consecutive_free = 0;
@@ -92,7 +105,7 @@ void* pmm_alloc_pages(struct pmm_ctx* pmm, size_t count) {
     for (size_t i = 0; i < pmm->total_pages; i++) {
         if (!bitmap_test(pmm->bitmap, i)) {
             if (consecutive_free == 0) {
-                start_index = 0;
+                start_index = i;
             }
             consecutive_free++;
 
@@ -104,20 +117,22 @@ void* pmm_alloc_pages(struct pmm_ctx* pmm, size_t count) {
                 pmm->free_pages -= count;
                 pmm->last_allocated_index = start_index + count;
 
-                return (void*)(start_index * PAGE_SIZE);
+                return (phys_addr_t)(start_index * PAGE_SIZE);
             }
         } else {
             consecutive_free = 0;
         }
     }
 
-    return nullptr;
+    return 0;
 }
 
-void pmm_free_page(struct pmm_ctx* pmm, void* ptr) {
-    if (ptr == nullptr) return;
+void pmm_free_page(struct pmm_ctx* pmm, phys_addr_t addr) {
+    if (addr == 0) return;
 
-    uint64_t page_index = (uint64_t)ptr / PAGE_SIZE;
+    uint64_t page_index = addr / PAGE_SIZE;
+
+    if (page_index >= pmm->total_pages) return;
 
     if (bitmap_test(pmm->bitmap, page_index)) {
         bitmap_clear(pmm->bitmap, page_index);

@@ -27,9 +27,9 @@ struct heap_ctx {
     struct heap_bucket buckets[HEAP_BUCKET_COUNT];
 };
 
-void  heap_init(struct kernel_ctx* heap);
-void* heap_alloc(struct heap_ctx* heap, size_t size);
-void  heap_free(struct heap_ctx* heap, void* ptr);
+void heap_init(struct kernel_ctx* heap);
+[[nodiscard]] void* heap_alloc(struct heap_ctx* heap, size_t size);
+void heap_free(struct heap_ctx* heap, void* ptr);
 
 #ifdef __cplusplus
 }

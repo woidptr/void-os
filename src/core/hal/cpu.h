@@ -7,18 +7,10 @@ extern "C" {
 
 struct kernel_ctx;
 
-void cpu_halt();
-
-/**
- * @brief Permanently locks the current CPU core in a halted state.
- *
- * This function places the processor into a continuous low-power sleep state. 
- * It wraps the x86 'hlt' instruction in an infinite loop to guarantee that 
- * even if a Non-Maskable Interrupt (NMI) forces the CPU to wake up, it will 
- * immediately halt again upon returning. It is primarily used at the end of 
- * a kernel panic to freeze the system and prevent further data corruption.
- */
-void cpu_lock();
+struct stack_frame {
+    struct stack_frame* next_frame;
+    uintptr_t return_addr;
+};
 
 /**
  * @brief Initializes the Bootstrap Processor (BSP) architecture structures.
@@ -37,6 +29,17 @@ void cpu_lock();
 void cpu_init_bsp(struct kernel_ctx* kctx, uint64_t hhdm_offset);
 
 /**
+ * @brief Permanently locks the current CPU core in a halted state.
+ *
+ * This function places the processor into a continuous low-power sleep state. 
+ * It wraps the x86 'hlt' instruction in an infinite loop to guarantee that 
+ * even if a Non-Maskable Interrupt (NMI) forces the CPU to wake up, it will 
+ * immediately halt again upon returning. It is primarily used at the end of 
+ * a kernel panic to freeze the system and prevent further data corruption.
+ */
+void cpu_lock();
+
+/**
  * @brief Initializes an Application Processor (AP) architecture state upon wake-up.
  *
  * This function must be called by every secondary core immediately after it 
@@ -50,6 +53,24 @@ void cpu_init_bsp(struct kernel_ctx* kctx, uint64_t hhdm_offset);
  * @param core_id The logical, zero-indexed ID of the waking core.
  */
 void cpu_init_ap(struct kernel_ctx* kctx, uint32_t core_id);
+
+/**
+ * @brief Globally enables hardware interrupts on the current core.
+ * 
+ * This function allows the CPU to respond to external hardware signals 
+ * (like timer pulses or keyboard events). It should be called after the 
+ * IDT is fully initialized.
+ */
+void cpu_enable_interrupts();
+
+/**
+ * @brief Globally disables hardware interrupts on the current core.
+ * 
+ * This function prevents the CPU from being interrupted by hardware events. 
+ * It is commonly used to protect "critical sections" of code where 
+ * atomicity is required.
+ */
+void cpu_disbale_interrupts();
 
 #ifdef __cplusplus
 }
